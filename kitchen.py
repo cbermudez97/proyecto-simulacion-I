@@ -19,7 +19,6 @@ class Kitchen:
         
         self.Na = 0 # Cantidad de personas que estan en  el sistema
         self.Nd = 0 # Cantidad de personas que salieron del sistema
-        self.th_a = [0] * self.maxn # Tiempo de arribo del cliente que se esta atendiendo con el empleado i
 
         self.late_n = 0 # Cantidad de personas que se demoraron mas de 5 minutos hasta ser atendidas
 
@@ -33,29 +32,32 @@ class Kitchen:
         self.time = event
         current_workers = self.working(self.time)
         assert current_workers <= self.maxn, "No pueden trabajar mas empleados que la cantidad maxima"
-        if event == self.ta and event <= self.T: # Ocurre un arribo
-            self.Na += 1
-            self.ta = self.time + self.agen()
-            for i in range(current_workers): # Solo se tienen en cuenta los empleados que estan trabajando en ese momento
-                if not self.oth[i]: # Intenta ser atendido por el empleado i
-                    self.th_a[i] = event
-                    self.th[i] = self.time + self.gen_order_time()
-                    self.oth[i] = True
-                    break
-            else: # Pasa a la cola
+        if event == self.ta: # Ocurre un arribo
+            if event <= self.T:
+                self.Na += 1
+                self.ta = self.time + self.agen()
+                for i in range(current_workers): # Solo se tienen en cuenta los empleados que estan trabajando en ese momento
+                    if not self.oth[i]: # Intenta ser atendido por el empleado i
+                        self.th[i] = self.time + self.gen_order_time()
+                        self.oth[i] = True
+                        return True
+                # Pasa a la cola
                 self.queue.put_nowait(event)
-            return True
+                return True
+            else:
+                self.ta = max(*self.th) + 1
+                return any(self.oth)
         for i in range(self.maxn):
             if event == self.th[i]: # Termina un cliente atendido por el empleado 1
                 self.Na -= 1
-                self.Nd += 1
-                elapsed = event - self.th_a[i]
-                self.late_n += (1 if elapsed > 5 else 0)
+                self.Nd += 1    
                 if not self.queue.empty() and i < current_workers: # Existen personas en la cola y el empleado sigue trabajando
-                    self.th_a[i] = self.queue.get_nowait()
+                    arrival = self.queue.get_nowait()
+                    elapsed = event - arrival
+                    self.late_n += (1 if elapsed > 5 else 0)
                     self.th[i] = self.time + self.gen_order_time()
                 else: # La cola esta vacia
-                    self.th[i] = self.time + self.ta
+                    self.th[i] = self.T + self.ta
                     self.oth[i] = False
                 return True
         assert self.Na == 0, "No pueden quedar personas al final de la simulacion"

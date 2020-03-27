@@ -41,14 +41,14 @@ class Kitchen:
                         self.th[i] = self.time + self.gen_order_time()
                         self.oth[i] = True
                         return True
-                # Pasa a la cola
+                # Pasa a la cola sino es atendido por nadie
                 self.queue.put_nowait(event)
                 return True
             else:
-                self.ta = max(*self.th) + 1
-                return any(self.oth)
+                self.ta = max(*self.th) + 1 # Forzar que el siguiente evento se una salida de un cliente
+                return any(self.oth) # Si ya no hay clientes atendiendoce terminar sino seguir
         for i in range(self.maxn):
-            if event == self.th[i]: # Termina un cliente atendido por el empleado 1
+            if event == self.th[i]: # Termina un cliente atendido por el empleado i
                 self.Na -= 1
                 self.Nd += 1    
                 if not self.queue.empty() and i < current_workers: # Existen personas en la cola y el empleado sigue trabajando
@@ -56,9 +56,8 @@ class Kitchen:
                     elapsed = event - arrival
                     self.late_n += (1 if elapsed > 5 else 0)
                     self.th[i] = self.time + self.gen_order_time()
-                else: # La cola esta vacia
-                    self.th[i] = self.T + self.ta
+                else: # La cola esta vacia y el empleado pasa a estar libre, o no esta trabajando y deja de atender clientes
+                    self.th[i] = self.T + self.ta # Forzar a que ocurra un evento de arribo antes
                     self.oth[i] = False
                 return True
-        assert self.Na == 0, "No pueden quedar personas al final de la simulacion"
-        return False
+        return False # No deberia llegar aqui...
